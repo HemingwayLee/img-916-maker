@@ -60,6 +60,41 @@
             transform: translateY(0);
         }
 
+        .download-btn {
+            background: #10b981;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .download-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .download-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
         #fileInput {
             display: none;
         }
@@ -87,9 +122,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 100%;
             height: 100%;
-            object-fit: cover;
+            width: auto;
+            min-width: 100%;
+            object-fit: contain;
+            cursor: ew-resize;
+            user-select: none;
         }
 
         .placeholder {
@@ -101,9 +139,14 @@
 <body>
     <div class="container">
         <h1>Image Loader</h1>
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-            Load Image
-        </button>
+        <div class="button-group">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Load Image
+            </button>
+            <button class="download-btn" id="downloadBtn" disabled>
+                Download Image
+            </button>
+        </div>
         <input type="file" id="fileInput" accept="image/*">
         <div id="imageContainer">
             <p class="placeholder">No image loaded yet. Click the button to load an image.</p>
@@ -113,6 +156,7 @@
     <script>
         const fileInput = document.getElementById('fileInput');
         const imageContainer = document.getElementById('imageContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
 
         fileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -126,12 +170,79 @@
                             <img src="${e.target.result}" alt="Loaded image">
                         </div>
                     `;
+
+                    // Add drag functionality
+                    const img = imageContainer.querySelector('img');
+                    let isDragging = false;
+                    let offsetX = 0;
+                    let offsetY = 0;
+                    let startX, startY;
+
+                    img.addEventListener('mousedown', function(e) {
+                        isDragging = true;
+                        startX = e.clientX - offsetX;
+                        startY = e.clientY - offsetY;
+                        e.preventDefault();
+                    });
+
+                    document.addEventListener('mousemove', function(e) {
+                        if (isDragging) {
+                            offsetX = e.clientX - startX;
+                            img.style.transform = `translate(calc(-50% + ${offsetX}px), -50%)`;
+                        }
+                    });
+
+                    document.addEventListener('mouseup', function() {
+                        isDragging = false;
+                    });
+
+                    // Enable download button
+                    downloadBtn.disabled = false;
                 };
 
                 reader.readAsDataURL(file);
             } else {
                 imageContainer.innerHTML = '<p class="placeholder">Please select a valid image file.</p>';
             }
+        });
+
+        // Download button functionality
+        downloadBtn.addEventListener('click', function() {
+            const maskContainer = imageContainer.querySelector('.image-mask');
+            const img = imageContainer.querySelector('img');
+
+            if (!maskContainer || !img) return;
+
+            // Create a canvas with 9:16 aspect ratio
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size to match the mask container (9:16 ratio)
+            const containerRect = maskContainer.getBoundingClientRect();
+            canvas.width = containerRect.width;
+            canvas.height = containerRect.height;
+
+            // Get the image element's position and dimensions
+            const imgRect = img.getBoundingClientRect();
+            const containerLeft = containerRect.left;
+            const containerTop = containerRect.top;
+
+            // Calculate the source image position relative to the container
+            const dx = imgRect.left - containerLeft;
+            const dy = imgRect.top - containerTop;
+
+            // Draw the visible part of the image onto the canvas
+            ctx.drawImage(img, dx, dy, imgRect.width, imgRect.height);
+
+            // Convert canvas to blob and download
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'image-9-16.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
         });
     </script>
 </body>
