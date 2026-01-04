@@ -134,6 +134,73 @@
             color: #999;
             font-style: italic;
         }
+
+        .tabs {
+            display: none;
+            margin-top: 30px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tabs.active {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-mask-16-9 {
+            position: relative;
+            width: 100%;
+            max-width: 560px;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            background: #f0f0f0;
+        }
+
+        .image-mask-16-9 img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: auto;
+            min-height: 100%;
+            object-fit: contain;
+            cursor: ew-resize;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -148,15 +215,81 @@
             </button>
         </div>
         <input type="file" id="fileInput" accept="image/*">
+
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="9-16">9:16 Ratio</button>
+            <button class="tab" data-tab="16-9">16:9 Ratio</button>
+        </div>
+
         <div id="imageContainer">
             <p class="placeholder">No image loaded yet. Click the button to load an image.</p>
         </div>
+
+        <div id="tab-9-16" class="tab-content active"></div>
+        <div id="tab-16-9" class="tab-content"></div>
     </div>
 
     <script>
         const fileInput = document.getElementById('fileInput');
         const imageContainer = document.getElementById('imageContainer');
         const downloadBtn = document.getElementById('downloadBtn');
+        const tabs = document.getElementById('tabs');
+        const tabButtons = document.querySelectorAll('.tab');
+        const tab916Container = document.getElementById('tab-9-16');
+        const tab169Container = document.getElementById('tab-16-9');
+        let currentTab = '9-16';
+
+        // Tab switching functionality
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+
+                // Update active tab button
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+
+                // Update active tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`tab-${tabName}`).classList.add('active');
+
+                currentTab = tabName;
+            });
+        });
+
+        function addDragFunctionality(img, is169 = false) {
+            let isDragging = false;
+            let offsetX = 0;
+            let offsetY = 0;
+            let startX, startY;
+
+            img.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX - offsetX;
+                startY = e.clientY - offsetY;
+                e.preventDefault();
+            });
+
+            const mouseMoveHandler = function(e) {
+                if (isDragging) {
+                    offsetX = e.clientX - startX;
+                    if (is169) {
+                        offsetY = e.clientY - startY;
+                        img.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+                    } else {
+                        img.style.transform = `translate(calc(-50% + ${offsetX}px), -50%)`;
+                    }
+                }
+            };
+
+            const mouseUpHandler = function() {
+                isDragging = false;
+            };
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+        }
 
         fileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -165,36 +298,31 @@
                 const reader = new FileReader();
 
                 reader.onload = function(e) {
-                    imageContainer.innerHTML = `
+                    // Hide placeholder
+                    imageContainer.style.display = 'none';
+
+                    // Show tabs
+                    tabs.classList.add('active');
+
+                    // Create 9:16 container
+                    tab916Container.innerHTML = `
                         <div class="image-mask">
                             <img src="${e.target.result}" alt="Loaded image">
                         </div>
                     `;
 
-                    // Add drag functionality
-                    const img = imageContainer.querySelector('img');
-                    let isDragging = false;
-                    let offsetX = 0;
-                    let offsetY = 0;
-                    let startX, startY;
+                    // Create 16:9 container
+                    tab169Container.innerHTML = `
+                        <div class="image-mask-16-9">
+                            <img src="${e.target.result}" alt="Loaded image">
+                        </div>
+                    `;
 
-                    img.addEventListener('mousedown', function(e) {
-                        isDragging = true;
-                        startX = e.clientX - offsetX;
-                        startY = e.clientY - offsetY;
-                        e.preventDefault();
-                    });
-
-                    document.addEventListener('mousemove', function(e) {
-                        if (isDragging) {
-                            offsetX = e.clientX - startX;
-                            img.style.transform = `translate(calc(-50% + ${offsetX}px), -50%)`;
-                        }
-                    });
-
-                    document.addEventListener('mouseup', function() {
-                        isDragging = false;
-                    });
+                    // Add drag functionality to both images
+                    const img916 = tab916Container.querySelector('img');
+                    const img169 = tab169Container.querySelector('img');
+                    addDragFunctionality(img916, false);
+                    addDragFunctionality(img169, true);
 
                     // Enable download button
                     downloadBtn.disabled = false;
@@ -208,16 +336,17 @@
 
         // Download button functionality
         downloadBtn.addEventListener('click', function() {
-            const maskContainer = imageContainer.querySelector('.image-mask');
-            const img = imageContainer.querySelector('img');
+            const activeTabContent = document.querySelector('.tab-content.active');
+            const maskContainer = activeTabContent.querySelector('.image-mask, .image-mask-16-9');
+            const img = activeTabContent.querySelector('img');
 
             if (!maskContainer || !img) return;
 
-            // Create a canvas with 9:16 aspect ratio
+            // Create a canvas
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
-            // Set canvas size to match the mask container (9:16 ratio)
+            // Set canvas size to match the mask container
             const containerRect = maskContainer.getBoundingClientRect();
             canvas.width = containerRect.width;
             canvas.height = containerRect.height;
@@ -235,11 +364,12 @@
             ctx.drawImage(img, dx, dy, imgRect.width, imgRect.height);
 
             // Convert canvas to blob and download
+            const fileName = currentTab === '9-16' ? 'image-9-16.png' : 'image-16-9.png';
             canvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'image-9-16.png';
+                a.download = fileName;
                 a.click();
                 URL.revokeObjectURL(url);
             });
