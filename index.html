@@ -273,9 +273,45 @@
 
             const mouseMoveHandler = function(e) {
                 if (isDragging) {
-                    offsetX = e.clientX - startX;
+                    const container = img.parentElement;
+                    const containerRect = container.getBoundingClientRect();
+                    const imgRect = img.getBoundingClientRect();
+
+                    // Calculate proposed offsets
+                    let newOffsetX = e.clientX - startX;
+                    let newOffsetY = is169 ? (e.clientY - startY) : 0;
+
+                    // Calculate the maximum allowed offsets to prevent empty spaces
+                    // For horizontal dragging
+                    const maxOffsetX = (imgRect.width - containerRect.width) / 2;
+                    const minOffsetX = -maxOffsetX;
+
+                    // Clamp the horizontal offset
+                    if (maxOffsetX > 0) {
+                        newOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, newOffsetX));
+                    } else {
+                        newOffsetX = 0;
+                    }
+
+                    // For vertical dragging (only for 16:9)
                     if (is169) {
-                        offsetY = e.clientY - startY;
+                        const maxOffsetY = (imgRect.height - containerRect.height) / 2;
+                        const minOffsetY = -maxOffsetY;
+
+                        // Clamp the vertical offset
+                        if (maxOffsetY > 0) {
+                            newOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, newOffsetY));
+                        } else {
+                            newOffsetY = 0;
+                        }
+                    }
+
+                    // Update offsets
+                    offsetX = newOffsetX;
+                    offsetY = newOffsetY;
+
+                    // Apply transform
+                    if (is169) {
                         img.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
                     } else {
                         img.style.transform = `translate(calc(-50% + ${offsetX}px), -50%)`;
